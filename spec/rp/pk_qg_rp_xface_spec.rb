@@ -156,36 +156,42 @@ describe 'pk_qg_rp_xface' do
       end
     end
     
-     context 'for any no of params' do
-       context 'gives failure' do
-         it 'when invalid report name is passed' do
-           expect(RpAvailableReport.schedule_report('something')).to be_incorrect(ar7, 'rp:E404')
-         end
+     context 'for invalid report name' do
+       it 'gives failure' do
+         expect(RpAvailableReport.schedule_report('something')).to be_incorrect(ar7, 'rp:E404')
+       end
+     end
 
-         it 'when params are not passed' do
-           expect(RpAvailableReport.schedule_report(ar7[:name])).to be_incorrect(ar7, 'rp:E400')
-         end
-
-         it 'when invalid params are passed' do
-           expect(RpAvailableReport.schedule_report(ar8[:name],
-             {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
-           .to be_incorrect(ar8, 'rp:E400')
-         end
+     context 'for not passing required params' do
+       it 'gives failure' do
+         expect(RpAvailableReport.schedule_report(ar7[:name])).to be_incorrect(ar7, 'rp:E400')
+       end
+     end
+     
+     context 'for invalid params' do
+       it 'gives failure' do
+         expect(RpAvailableReport.schedule_report(ar8[:name],
+           {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
+         .to be_incorrect(ar8, 'rp:E400')
        end
      end
   end
   
   context 'get_param_type' do
-    it 'returns date when data type is date' do
+    it 'returns date for data type date' do
       expect(RpAvailableReport.get_param_type('{"param1_name":"p1","param1_type":"date"}')).to eq('date')
     end
     
-    it 'returns number when data type is number' do
+    it 'returns number for data type number' do
       expect(RpAvailableReport.get_param_type('{"param2_name":"p2","param2_type":"number"}')).to eq('number')
     end
     
-    it 'returns text when data type is text' do
+    it 'returns text for data type text' do
       expect(RpAvailableReport.get_param_type('{"param3_name":"p3","param3_type":"text"}')).to eq('text')
+    end
+    
+    it 'returns nil for any other data type' do
+      expect(RpAvailableReport.get_param_type('{"param3_name":"p3","param3_type":"boolean"}')).to eq(nil)
     end
   end
   
