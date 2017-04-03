@@ -25,7 +25,6 @@ class RpAvailableReport
           end
         end
       end
-      puts args
     plsql.rp_available_reports.insert(args)
   end
   
@@ -50,31 +49,149 @@ class RpAvailableReport
     
     plsql.select(:first, "select * from rp_reports where id = #{rp_report_id}")
   end
+  
+  def self.get_param_type(param)
+    plqsl_result = plsql.pk_qg_rp_xface.get_param_type(pi_param: param)
+  end
+  
+  def self.get_param_name(param)
+    plqsl_result = plsql.pk_qg_rp_xface.get_param_name(pi_param: param)
+  end
 end
 
 describe 'pk_qg_rp_xface' do
 
-  context 'for 5 params' do
-    ar1 = {name: '5 params', params_cnt: 2, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}}
-    ar2 = {name: '5 params failure', params_cnt: 2, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'}}
+  context 'schedule report' do
+    ar1 = {name: '5_SUCCESS', params_cnt: 5, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+           param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}, param5: {name: 'p5', type: 'text'}}
+           
+    ar2 = {name: '4_SUCCESS', params_cnt: 4, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+           param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}}
+           
+    ar3 = {name: '3_SUCCESS', params_cnt: 3, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+          param3: {name: 'p3', type: 'number'}}
+
+    ar4 = {name: '2_SUCCESS', params_cnt: 2, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}}
     
+    ar5 = {name: '1_SUCCESS', params_cnt: 1, param1: {name: 'p1', type: 'text'}}
+    
+    ar6 = {name: '0_SUCCESS', params_cnt: 0}
+    
+    ar7 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
+           param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
+
+    ar8 = {name: 'FAILURE_2', params_cnt: 2, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'}}
+  
     before(:all) do
       RpAvailableReport.setup(ar1)
       RpAvailableReport.setup(ar2)
+      RpAvailableReport.setup(ar3)
+      RpAvailableReport.setup(ar4)
+      RpAvailableReport.setup(ar5)
+      RpAvailableReport.setup(ar6)
+      RpAvailableReport.setup(ar7)
+      RpAvailableReport.setup(ar8)
     end
-    
-    context 'schedule_report' do
+  
+    context 'for 5 params' do
 
       it 'works' do
         expect(RpAvailableReport.schedule_report(ar1[:name], 
           {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
-          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil}))
+          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
+          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9},
+          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 8},
+          {pri_data_type: 'text', pri_text_value: 'p5', pri_date_value: nil, pri_number_value: nil}))
         .to be_correct(ar1)
       end
+    end
+    
+    context 'for 4 params' do
 
-      it 'gives error when params are not passed' do
-        expect(RpAvailableReport.schedule_report(ar2[:name])).to be_incorrect(ar2)
+      it 'works' do
+        expect(RpAvailableReport.schedule_report(ar2[:name], 
+          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
+          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
+          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9},
+          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 8}))
+        .to be_correct(ar2)
       end
+    end
+    
+    context 'for 3 params' do
+
+      it 'works' do
+        expect(RpAvailableReport.schedule_report(ar3[:name], 
+          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
+          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
+          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9}))
+        .to be_correct(ar3)
+      end
+    end
+    
+    context 'for 2 params' do
+
+      it 'works' do
+        expect(RpAvailableReport.schedule_report(ar4[:name], 
+          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
+          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil}))
+        .to be_correct(ar4)
+      end
+    end
+    
+    context 'for 1 param' do
+
+      it 'works' do
+        expect(RpAvailableReport.schedule_report(ar5[:name], 
+          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
+        .to be_correct(ar5)
+      end
+    end
+    
+    context 'for 0 param' do
+
+      it 'works' do
+        expect(RpAvailableReport.schedule_report(ar6[:name]))
+        .to be_correct(ar6)
+      end
+    end
+    
+     context 'for any no of params' do
+       context 'gives failure' do
+         it 'when invalid report name is passed' do
+           expect(RpAvailableReport.schedule_report('something')).to be_incorrect(ar7, 'rp:E404')
+         end
+
+         it 'when params are not passed' do
+           expect(RpAvailableReport.schedule_report(ar7[:name])).to be_incorrect(ar7, 'rp:E400')
+         end
+
+         it 'when invalid params are passed' do
+           expect(RpAvailableReport.schedule_report(ar8[:name],
+             {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
+           .to be_incorrect(ar8, 'rp:E400')
+         end
+       end
+     end
+  end
+  
+  context 'get_param_type' do
+    it 'returns date when data type is date' do
+      expect(RpAvailableReport.get_param_type('{"param1_name":"p1","param1_type":"date"}')).to eq('date')
+    end
+    
+    it 'returns number when data type is number' do
+      expect(RpAvailableReport.get_param_type('{"param2_name":"p2","param2_type":"number"}')).to eq('number')
+    end
+    
+    it 'returns text when data type is text' do
+      expect(RpAvailableReport.get_param_type('{"param3_name":"p3","param3_type":"text"}')).to eq('text')
+    end
+  end
+  
+  context 'get_param_name' do
+    it 'returns name of the param' do
+      expect(RpAvailableReport.get_param_name('{"param1_name":"p1","param1_type":"date"}')).to eq('p1')
     end
   end
 end

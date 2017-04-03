@@ -55,10 +55,12 @@ RSpec::Matchers.define :be_correct do |ar|
   end  
 end
 
-RSpec::Matchers.define :be_incorrect do |ar|
+RSpec::Matchers.define :be_incorrect do |ar, code|
   match do |r|
     expect(r[:fault_code]).to_not be_nil
-    expect(r[:fault_reason]).to_not be_nil      
+    expect(r[:fault_reason]).to_not be_nil
+    
+    expect(r[:fault_code]).to eq(code)   
   end
   
   failure_message do |r|
