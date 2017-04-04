@@ -1,6 +1,7 @@
 require_relative 'matcher'
+require 'json'
 
-class RpAvailableReport
+class RpXface
   def self.setup(args)
     args.merge!({
         id: plsql.rp_available_reports_seq.nextval,
@@ -21,21 +22,27 @@ class RpAvailableReport
             param = {}
             param[s_name] = p[s.to_sym][:name]
             param[s_type] = p[s.to_sym][:type]
-            p[s.to_sym] = param.to_s
+            p[s.to_sym] = JSON.generate(param)
           end
         end
-      end
+      end  
     plsql.rp_available_reports.insert(args)
+  end
+  
+  def self.get_param(param)
+    return {pri_data_type: 'text', pri_text_value: param, pri_date_value: nil, pri_number_value: nil} if param.is_a?(String)
+    return {pri_data_type: 'date', pri_text_value: nil, pri_date_value: param, pri_number_value: nil} if param.is_a?(Date)
+    return {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: param} if param.is_a?(Integer)
   end
   
   def self.schedule_report(name, param1 = nil, param2 = nil, param3 = nil, param4 = nil, param5 = nil, run_at = nil)
     plsql_result = plsql.pk_qg_rp_xface.schedule_report(
     pi_ar_name: name,
-    pi_param1: param1,
-    pi_param2: param2,
-    pi_param3: param3,
-    pi_param4: param4,
-    pi_param5: param5,
+    pi_param1: get_param(param1),
+    pi_param2: get_param(param2),
+    pi_param3: get_param(param3),
+    pi_param4: get_param(param4),
+    pi_param5: get_param(param5),
     pi_run_at: run_at,
     po_fault_code: nil,
     po_fault_reason: nil
@@ -49,155 +56,154 @@ class RpAvailableReport
     
     plsql.select(:first, "select * from rp_reports where id = #{rp_report_id}")
   end
-  
-  def self.get_param_type(param)
-    plqsl_result = plsql.pk_qg_rp_xface.get_param_type(pi_param: param)
-  end
-  
-  def self.get_param_name(param)
-    plqsl_result = plsql.pk_qg_rp_xface.get_param_name(pi_param: param)
-  end
 end
 
 describe 'pk_qg_rp_xface' do
 
   context 'schedule report' do
-    ar1 = {name: '5_SUCCESS', params_cnt: 5, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
-           param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}, param5: {name: 'p5', type: 'text'}}
-           
-    ar2 = {name: '4_SUCCESS', params_cnt: 4, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
-           param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}}
-           
-    ar3 = {name: '3_SUCCESS', params_cnt: 3, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
-          param3: {name: 'p3', type: 'number'}}
-
-    ar4 = {name: '2_SUCCESS', params_cnt: 2, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}}
-    
-    ar5 = {name: '1_SUCCESS', params_cnt: 1, param1: {name: 'p1', type: 'text'}}
-    
-    ar6 = {name: '0_SUCCESS', params_cnt: 0}
-    
-    ar7 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
-           param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
-
-    ar8 = {name: 'FAILURE_2', params_cnt: 2, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'}}
   
-    before(:all) do
-      RpAvailableReport.setup(ar1)
-      RpAvailableReport.setup(ar2)
-      RpAvailableReport.setup(ar3)
-      RpAvailableReport.setup(ar4)
-      RpAvailableReport.setup(ar5)
-      RpAvailableReport.setup(ar6)
-      RpAvailableReport.setup(ar7)
-      RpAvailableReport.setup(ar8)
-    end
-  
-    context 'for 5 params' do
+    context 'for a report with 5 params' do
+      ar1 = {name: '5_SUCCESS', params_cnt: 5, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+             param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}, param5: {name: 'p5', type: 'text'}}
+             
+      before(:all) do
+        RpXface.setup(ar1)
+      end
 
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar1[:name], 
-          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
-          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
-          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9},
-          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 8},
-          {pri_data_type: 'text', pri_text_value: 'p5', pri_date_value: nil, pri_number_value: nil}))
-        .to be_correct(ar1)
+      context 'passing 5 params matching the definition' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar1[:name], 
+            'p1',
+            Date.today,
+            9,
+            8,
+            'p5'))
+          .to be_correct(ar1).with_status_new
+        end
       end
     end
     
-    context 'for 4 params' do
+    context 'for a report with 4 params' do
+      ar2 = {name: '4_SUCCESS', params_cnt: 4, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+             param3: {name: 'p3', type: 'number'}, param4: {name: 'p4', type: 'number'}}
 
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar2[:name], 
-          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
-          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
-          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9},
-          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 8}))
-        .to be_correct(ar2)
+      before(:all) do
+        RpXface.setup(ar2)
+      end
+
+      context 'passing 4 params matching the report definition' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar2[:name], 
+            'p1',
+            Date.today,
+            9,
+            8))
+          .to be_correct(ar2).with_status_new
+        end
       end
     end
     
-    context 'for 3 params' do
+    context 'for a report with 3 params' do
+      ar3 = {name: '3_SUCCESS', params_cnt: 3, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}, 
+            param3: {name: 'p3', type: 'number'}}
+            
+      before(:all) do
+        RpXface.setup(ar3)
+      end
 
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar3[:name], 
-          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
-          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil},
-          {pri_data_type: 'number', pri_text_value: nil, pri_date_value: nil, pri_number_value: 9}))
-        .to be_correct(ar3)
+      context 'passing 3 params matching the report definition' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar3[:name], 
+            'p1',
+            Date.today,
+            9))
+          .to be_correct(ar3).with_status_new
+        end
       end
     end
     
-    context 'for 2 params' do
+    context 'for a report with 2 params' do
+      ar4 = {name: '2_SUCCESS', params_cnt: 2, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'date'}}
+      
+      before(:all) do
+        RpXface.setup(ar4)
+      end
 
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar4[:name], 
-          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil},
-          {pri_data_type: 'date', pri_text_value: nil, pri_date_value: Date.today, pri_number_value: nil}))
-        .to be_correct(ar4)
+      context 'passing 2 params matching the report definition' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar4[:name], 
+            'p1',
+            Date.today))
+          .to be_correct(ar4).with_status_new
+        end
       end
     end
     
-    context 'for 1 param' do
-
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar5[:name], 
-          {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
-        .to be_correct(ar5)
+    context 'for a report with 1 param' do
+      ar5 = {name: '1_SUCCESS', params_cnt: 1, param1: {name: 'p1', type: 'text'}}
+      
+      before(:all) do
+        RpXface.setup(ar5)
+      end
+      
+      context 'passing 1 param matching the report definition' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar5[:name], 
+            'p1'))
+          .to be_correct(ar5).with_status_new
+        end
       end
     end
     
-    context 'for 0 param' do
+    context 'for a report with 0 param' do
+      ar6 = {name: '0_SUCCESS', params_cnt: 0}
+      
+      before(:all) do
+        RpXface.setup(ar6)
+      end
 
-      it 'works' do
-        expect(RpAvailableReport.schedule_report(ar6[:name]))
-        .to be_correct(ar6)
+      context 'passing no params' do
+        it 'should enqueue a report with_state_new' do
+          expect(RpXface.schedule_report(ar6[:name])).to be_correct(ar6).with_status_new
+        end
       end
     end
-    
-     context 'for invalid report name' do
-       it 'gives failure' do
-         expect(RpAvailableReport.schedule_report('something')).to be_incorrect(ar7, 'rp:E404')
-       end
-     end
 
-     context 'for not passing required params' do
-       it 'gives failure' do
-         expect(RpAvailableReport.schedule_report(ar7[:name])).to be_incorrect(ar7, 'rp:E400')
-       end
-     end
-     
-     context 'for invalid params' do
-       it 'gives failure' do
-         expect(RpAvailableReport.schedule_report(ar8[:name],
-           {pri_data_type: 'text', pri_text_value: 'p1', pri_date_value: nil, pri_number_value: nil}))
-         .to be_incorrect(ar8, 'rp:E400')
-       end
-     end
-  end
-  
-  context 'get_param_type' do
-    it 'returns date for data type date' do
-      expect(RpAvailableReport.get_param_type('{"param1_name":"p1","param1_type":"date"}')).to eq('date')
+    context 'for a report with any no of params' do
+      ar7 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
+             param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
+             
+      before(:all) do
+        RpXface.setup(ar7)
+      end
+      
+      context 'for report name which does not exist in rp_available_reports' do
+        it 'should fail with_not_found' do
+          expect(RpXface.schedule_report('something')).to be_incorrect(ar7).with_not_found
+        end
+      end
     end
-    
-    it 'returns number for data type number' do
-      expect(RpAvailableReport.get_param_type('{"param2_name":"p2","param2_type":"number"}')).to eq('number')
-    end
-    
-    it 'returns text for data type text' do
-      expect(RpAvailableReport.get_param_type('{"param3_name":"p3","param3_type":"text"}')).to eq('text')
-    end
-    
-    it 'returns nil for any other data type' do
-      expect(RpAvailableReport.get_param_type('{"param3_name":"p3","param3_type":"boolean"}')).to eq(nil)
-    end
-  end
-  
-  context 'get_param_name' do
-    it 'returns name of the param' do
-      expect(RpAvailableReport.get_param_name('{"param1_name":"p1","param1_type":"date"}')).to eq('p1')
+
+    context 'for a report with 1 text param' do
+      ar8 = {name: 'X', params_cnt: 2, param1: {name: 'p1', type: 'text'}, param2: {name: 'p2', type: 'number'}}
+      before(:all) do
+        RpXface.setup(ar8)
+      end
+      
+      context 'for not passing params' do
+        it 'should fail with_bad_request' do
+          expect(RpXface.schedule_report('X')).to be_incorrect(ar8).with_bad_request
+        end
+      end
+      
+      context 'for passing params which do not match the report definition' do
+        it 'should fail with_bad_request' do
+          expect(RpXface.schedule_report('X',
+            Date.today,
+            'p1'))
+          .to be_incorrect(ar8).with_bad_request
+        end
+      end
     end
   end
 end
