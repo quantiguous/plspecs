@@ -182,28 +182,32 @@ describe 'pk_qg_rp_xface' do
       end
     end    
   end
-  
-    context 'for a report with any no of params' do
-      ar1 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
-             param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
-             
-      ar2 = {name: 'FAILURE_1', params_cnt: 1, param1: {name: 'p1', type: 'date'}}
 
-      before(:all) do
-        RpXface.setup(ar1)
-        RpXface.setup(ar2)
-      end
+  context 'for report name which does not exist in rp_available_reports' do
+    ar = {name: 'FAILURE_1', params_cnt: 1, param1: {name: 'p1', type: 'date'}}
 
-      context 'for report name which does not exist in rp_available_reports' do
-        it 'should fail with_not_found' do
-          expect(RpXface.schedule_report('something')).to be_incorrect(ar1).with_not_found
-        end
-      end
-      
-      context 'for report name which has more than one row in rp_available_reports' do
-        it 'should fail with_bad_setup' do
-          expect(RpXface.schedule_report('FAILURE_1')).to be_incorrect(ar2).with_bad_setup
-        end
-      end
+    before(:all) do
+      RpXface.setup(ar)
     end
+
+    it 'should fail with_not_found' do
+      expect(RpXface.schedule_report('something')).to be_incorrect(ar).with_not_found
+    end
+  end
+
+  context 'for report name which has more than one row in rp_available_reports' do
+    ar1 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
+           param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
+
+    ar2 = {name: 'FAILURE_1', params_cnt: 1, param1: {name: 'p1', type: 'date'}}
+
+    before(:all) do
+      RpXface.setup(ar1)
+      RpXface.setup(ar2)
+    end
+
+    it 'should fail with_bad_setup' do
+      expect(RpXface.schedule_report('FAILURE_1')).to be_incorrect(ar2).with_bad_setup
+    end
+  end
 end
