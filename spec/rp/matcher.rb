@@ -73,6 +73,10 @@ RSpec::Matchers.define :be_incorrect do |ar|
     @fault_code = 'rp:E404'
   end
   
+  chain :with_bad_setup do
+    @fault_code = 'rp:E500'
+  end
+  
   failure_message do |r|
     "rp_report not as expected : #{r}"
   end
