@@ -59,7 +59,7 @@ RSpec::Matchers.define :be_correct do |ar|
   end  
 end
 
-RSpec::Matchers.define :be_incorrect do |ar|
+RSpec::Matchers.define :be_incorrect do
   match do |r|
     expect(r[:fault_code]).to eq(@fault_code)
     expect(r[:fault_reason]).to_not be_nil  
@@ -71,6 +71,10 @@ RSpec::Matchers.define :be_incorrect do |ar|
   
   chain :with_not_found do
     @fault_code = 'rp:E404'
+  end
+  
+  chain :with_bad_setup do
+    @fault_code = 'rp:E500'
   end
   
   failure_message do |r|

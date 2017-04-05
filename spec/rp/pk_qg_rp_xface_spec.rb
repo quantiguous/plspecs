@@ -141,7 +141,7 @@ describe 'pk_qg_rp_xface' do
             end
           else
             it 'should enqueue fail with_bad_request' do
-              expect(RpXface.schedule_report(ar[:name], Array.new(i, 'x'))).to be_incorrect(ar).with_bad_request
+              expect(RpXface.schedule_report(ar[:name], Array.new(i, 'x'))).to be_incorrect.with_bad_request
             end
           end
         end
@@ -166,7 +166,7 @@ describe 'pk_qg_rp_xface' do
             # failure cases
             context "and param #{i+1} values as #{make_param_values(scenario, false)}" do
               it "should fail with_bad_input" do
-                expect(RpXface.schedule_report(ar[:name], make_param_values(scenario, false))).to be_incorrect(ar).with_bad_request
+                expect(RpXface.schedule_report(ar[:name], make_param_values(scenario, false))).to be_incorrect.with_bad_request
               end
             end
           end
@@ -181,5 +181,27 @@ describe 'pk_qg_rp_xface' do
         end
       end
     end    
+  end
+
+  context 'for report name which does not exist in rp_available_reports' do
+    it 'should fail with_not_found' do
+      expect(RpXface.schedule_report('something')).to be_incorrect.with_not_found
+    end
+  end
+
+  context 'for report name which has more than one row in rp_available_reports' do
+    ar1 = {name: 'FAILURE_1', params_cnt: 4, param1: {name: 'p1', type: 'date'}, param2: {name: 'p2', type: 'number'},
+           param3: {name: 'p2', type: 'number'}, param4: {name: 'p2', type: 'number'}}
+
+    ar2 = {name: 'FAILURE_1', params_cnt: 1, param1: {name: 'p1', type: 'date'}}
+
+    before(:all) do
+      RpXface.setup(ar1)
+      RpXface.setup(ar2)
+    end
+
+    it 'should fail with_bad_setup' do
+      expect(RpXface.schedule_report('FAILURE_1')).to be_incorrect.with_bad_setup
+    end
   end
 end
